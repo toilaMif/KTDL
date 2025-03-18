@@ -1,0 +1,111 @@
+package ThaiNguyen;
+
+import weka.core.Instances;
+import weka.core.converters.ConverterUtils.DataSource;
+import weka.filters.Filter;
+import weka.filters.unsupervised.instance.RemovePercentage;
+
+public class Dataset {
+	Instances fulldataset;
+	DataSource dts;
+	String directory;
+	public Dataset(String directory) throws Exception {
+		this.directory=directory;
+		this.dts = new DataSource(this.directory);
+		this.fulldataset = this.dts.getDataSet();
+	}
+
+	public Instances getTrainDataset(double percent) throws Exception
+	{
+		RemovePercentage rm = new RemovePercentage();
+		rm.setPercentage(percent);
+		rm.setInvertSelection(true);
+		rm.setInputFormat(this.fulldataset);
+		return Filter.useFilter(fulldataset, rm);
+	}
+	public Instances getTestDataset(double percent) throws Exception
+	{
+		RemovePercentage rm = new RemovePercentage();
+		rm.setPercentage(percent);
+		rm.setInvertSelection(false);
+		rm.setInputFormat(this.fulldataset);
+		return Filter.useFilter(fulldataset, rm);
+	}
+}
+
+package ThaiNguyen;
+
+import weka.classifiers.evaluation.Evaluation;
+import weka.classifiers.trees.J48;
+import weka.core.Instances;
+import weka.core.SerializationHelper;
+
+public class Classification {
+	J48 j48;
+	Evaluation eval;
+	public void Build_J48_model(int class_idx,Instances dataset) throws Exception
+	{
+		dataset.setClassIndex(class_idx);
+		j48 = new J48();
+		j48.buildClassifier(dataset);
+	}
+	public void evaluate_J48_Model(Instances dataset,int class_idx) throws Exception
+	{
+		try
+		{
+			dataset.setClassIndex(class_idx);
+			eval = new Evaluation(dataset);
+			eval.evaluateModel(j48, dataset);
+		}catch(Exception e)
+		{
+			throw new Exception("Please call Build J48 Model First!");
+		}
+	}
+	public String summaryEval() throws Exception
+	{
+		return eval.toSummaryString()+"\n"+eval.toMatrixString()+"\n"+eval.toClassDetailsString()+"\n"+eval.toCumulativeMarginDistributionString();
+	}
+	public String summaryBuild()
+	{
+		return j48.toSummaryString();
+	}
+	public String predict(Instances dataset,int class_idx) throws Exception
+	{
+		dataset.setClassIndex(class_idx);
+		for(int i=0;i<dataset.numInstances();i++)
+		{
+			double result = j48.classifyInstance(dataset.instance(i));
+			dataset.instance(i).setClassValue(result);
+		}
+		return dataset.toString();
+	}
+	public void saveModel(String path) throws Exception
+	{
+		try
+		{
+			SerializationHelper.write(path,this.j48);
+		}catch (Exception e)
+		{
+			throw new Exception("Please train model!");
+		}
+		
+	}
+	
+}
+
+package ThaiNguyen;
+
+public class Test {
+
+	public static void main(String[] args) throws Exception {
+		Dataset dts = new Dataset("C:\\Users\\thainguyen5484\\Downloads\\car.arff");
+		Classification classify = new Classification();
+		classify.Build_J48_model(6, dts.fulldataset);
+		classify.evaluate_J48_Model(dts.fulldataset,6);
+		System.out.println(classify.summaryBuild());
+		System.out.println(classify.summaryEval());
+		//lưu model
+		classify.saveModel("C:\\Users\\thainguyen5484\\Downloads\\mymodel.kf");
+	}
+
+}
